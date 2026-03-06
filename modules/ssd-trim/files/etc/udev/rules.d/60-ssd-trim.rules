@@ -1,0 +1,11 @@
+# Enable TRIM (UNMAP) on all non-rotational SCSI/SATA/USB drives.
+# This exposes TRIM capability for external SSDs connected over USB/SATA,
+# which the kernel hides by default for safety reasons.
+# fstrim.timer (already enabled by default) will then trim them weekly.
+# NVMe drives expose TRIM natively and are unaffected by this rule.
+ACTION=="add|change", KERNEL=="sd*", SUBSYSTEM=="scsi_disk", \
+    ATTR{../../queue/rotational}=="0", \
+    ATTR{provisioning_mode}="unmap"
+
+# Supersedes this vendor-specific rule for the Realtek RTL9210 USB-SATA bridge:
+# ACTION=="add|change", ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="9210", SUBSYSTEM=="scsi_disk", ATTR{provisioning_mode}="unmap"

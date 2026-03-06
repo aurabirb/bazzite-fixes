@@ -1,0 +1,16 @@
+[Unit]
+Description=Auto-mount NTFS drives for Steam library
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# ExecStartPre=/bin/sleep 3
+ExecStart=-pkexec /usr/local/bin/ntfs-mount.sh
+ExecStop=-pkexec /usr/local/bin/ntfs-mount.sh unmount
+TimeoutStartSec=30
+TimeoutStopSec=15
+
+[Install]
+WantedBy=default.target

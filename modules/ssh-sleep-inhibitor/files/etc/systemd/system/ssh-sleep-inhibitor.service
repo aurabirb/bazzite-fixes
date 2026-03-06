@@ -1,0 +1,11 @@
+[Unit]
+Description=Block sleep while SSH sessions are active
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/systemd-inhibit \
+    --what=sleep \
+    --who=SSH \
+    --why="SSH session is active" \
+    --mode=block \
+    /usr/bin/sleep infinity
