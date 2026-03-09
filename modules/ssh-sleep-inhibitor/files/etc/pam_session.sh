@@ -6,28 +6,33 @@
 # Explicit suspend (sudo systemctl suspend) still works because
 # root has polkit permission to ignore inhibitors.
 #
-# Inspired by: https://unix.stackexchange.com/a/136552/84197 and
-#              https://askubuntu.com/a/954943/388360
 
-num_ssh=$(netstat -nt | awk '$4 ~ /:22$/ && $6 == "ESTABLISHED"' | wc -l)
+LOCKFILE=/run/ssh-session.lock
+COUNTER=/run/ssh-session-count
 
-case "$PAM_TYPE" in
-    open_session)
-        if [ "${num_ssh}" -gt 1 ]; then
-            exit 0
-        fi
-        logger "SSH session opened, starting sleep inhibitor (num_ssh=${num_ssh})"
-        systemctl start ssh-sleep-inhibitor.service
-        ;;
+(
+    flock -x 200
 
-    close_session)
-        if [ "${num_ssh}" -ne 0 ]; then
-            exit 0
-        fi
-        logger "Last SSH session closed, stopping sleep inhibitor (num_ssh=${num_ssh})"
-        systemctl stop ssh-sleep-inhibitor.service
-        ;;
+    count=$(cat "$COUNTER" 2>/dev/null || echo 0)
 
-    *)
-        exit 0
-esac
+    case "$PAM_TYPE" in
+        open_session)
+            count=$((count + 1))
+            echo "$count" > "$COUNTER"
+            if [ "$count" -eq 1 ]; then
+                logger "SSH session opened (count=${count}), starting sleep inhibitor"
+                systemctl start ssh-sleep-inhibitor.service
+            fi
+            ;;
+
+        close_session)
+            count=$((count - 1))
+            [ "$count" -lt 0 ] && count=0
+            echo "$count" > "$COUNTER"
+            if [ "$count" -eq 0 ]; then
+                logger "Last SSH session closed, stopping sleep inhibitor"
+                systemctl stop ssh-sleep-inhibitor.service
+            fi
+            ;;
+    esac
+) 200>"$LOCKFILE"
