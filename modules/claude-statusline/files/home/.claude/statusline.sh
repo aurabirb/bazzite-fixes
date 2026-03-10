@@ -52,7 +52,7 @@ build_bar() {
 
 fmt_time() {
   local reset_epoch now diff m d h mins
-  reset_epoch=$(date -d "$1" +%s 2>/dev/null) || return
+  reset_epoch=$(date -d "$1" +%s 2>/dev/null || date -j -f '%Y-%m-%dT%H:%M:%SZ' "$1" +%s 2>/dev/null) || return
   now=$(date +%s)
   diff=$(( reset_epoch - now ))
   (( diff <= 0 )) && { printf '0m'; return; }
@@ -73,7 +73,7 @@ token=""
 limits_json=""
 if [[ -n "$token" ]]; then
   CACHE_DIR="$HOME/.cache/claude-statusline"
-  hash=$(printf '%s' "$token" | sha256sum | cut -c1-16)
+  hash=$(printf '%s' "$token" | cksum | tr -d ' \t\n')
   cache_file="$CACHE_DIR/cache-${hash}.json"
 
   if [[ -f "$cache_file" ]]; then
@@ -95,6 +95,8 @@ if [[ -n "$token" ]]; then
       now_s=$(date +%s)
       printf '{"data":%s,"timestamp":%d}\n' "$limits_json" "$now_s" > "$cache_file"
       chmod 600 "$cache_file"
+      # Remove any other cache files (old tokens)
+      find "$CACHE_DIR" -name 'cache-*.json' ! -name "$(basename "$cache_file")" -delete 2>/dev/null
     fi
   fi
 fi
