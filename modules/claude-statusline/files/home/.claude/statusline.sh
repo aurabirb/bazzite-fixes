@@ -109,11 +109,10 @@ if [[ -n "$token" ]]; then
 fi
 
 # Assemble parts
-host=$(hostname)
 bar=$(build_bar "$pct")
 cost_fmt=$(printf '%.2f' "$cost")
 
-parts=("${CYAN}${project}@${host}${R} $bar" "${ACCENT}\$${cost_fmt}${R}")
+parts=("${CYAN}${project}${R} $bar" "${ACCENT}\$${cost_fmt}${R}")
 
 # Rate limit segments
 if [[ -n "$limits_json" && "$limits_json" != "null" ]]; then
