@@ -7,7 +7,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODULES_DIR="$SCRIPT_DIR/modules"
 
-mapfile -t all_modules < <(ls "$MODULES_DIR")
+all_modules=()
+while IFS= read -r d; do
+    all_modules+=("$(basename "$d")")
+done < <(find "$MODULES_DIR" -mindepth 1 -maxdepth 1 -type d | sort)
 
 [[ $# -eq 0 || ${1:-} == -h || ${1:-} == --help ]] && {
     echo "Usage: ./install.sh <module [...]|--all>"
