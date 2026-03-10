@@ -14,14 +14,17 @@ input=$(cat)
 [[ -z "$input" ]] && { printf '⚠️\n'; exit 0; }
 
 # Parse context window fields in one jq call
-read -r size input_tokens cost < <(printf '%s' "$input" | jq -r '
+read -r size input_tokens cost cwd_raw < <(printf '%s' "$input" | jq -r '
   (.context_window.context_window_size // 200000) as $size |
   ((.context_window.current_usage // {}) |
     ((.input_tokens // 0) + (.cache_creation_input_tokens // 0) + (.cache_read_input_tokens // 0))
   ) as $tok |
   (.cost.total_cost_usd // 0) as $cost |
-  "\($size) \($tok) \($cost)"
+  (.cwd // "") as $cwd |
+  "\($size) \($tok) \($cost) \($cwd)"
 ')
+project=${cwd_raw:+$(basename "$cwd_raw")}
+project=${project:-$(basename "$PWD")}
 
 # Percentage (clamped 0-100)
 pct=$(awk "BEGIN{p=$input_tokens/$size*100; if(p>100)p=100; printf \"%.0f\",p}")
@@ -34,11 +37,13 @@ color_pct() {
   fi
 }
 
+BAR_SIZE=5
+
 build_bar() {
   local p=$1
   local filled empty c bar=""
-  filled=$(awk "BEGIN{f=int($p/100*10+0.5); if(f>10)f=10; print f}")
-  empty=$(( 10 - filled ))
+  filled=$(awk "BEGIN{f=int($p/100*$BAR_SIZE+0.5); if(f>$BAR_SIZE)f=$BAR_SIZE; print f}")
+  empty=$(( BAR_SIZE - filled ))
   c=$(color_pct "$p")
   printf -v bar '%0.s█' $(seq 1 $filled) 2>/dev/null
   local e; printf -v e '%0.s░' $(seq 1 $empty) 2>/dev/null
@@ -105,27 +110,23 @@ fi
 
 # Assemble parts
 host=$(hostname)
-c=$(color_pct "$pct")
 bar=$(build_bar "$pct")
-tok_fmt=$(fmt_tokens "$input_tokens")
-size_fmt=$(fmt_tokens "$size")
 cost_fmt=$(printf '%.2f' "$cost")
 
-parts=("${CYAN}🖥 ${host}${R}" "$bar" "${c}${pct}%${R}" "${tok_fmt}/${size_fmt}" "${ACCENT}\$${cost_fmt}${R}")
+parts=("${CYAN}${project}@${host}${R} $bar" "${ACCENT}\$${cost_fmt}${R}")
 
 # Rate limit segments
 if [[ -n "$limits_json" && "$limits_json" != "null" ]]; then
-  for entry in "five_hour:5h" "seven_day:7d"; do
-    key="${entry%%:*}"; label="${entry##*:}"
+  for key in "five_hour" "seven_day"; do
     util=$(printf '%s' "$limits_json" | jq -r ".${key}.utilization // empty" 2>/dev/null)
     [[ -z "$util" ]] && continue
     u=$(printf '%.0f' "$util")
     resets_at=$(printf '%s' "$limits_json" | jq -r ".${key}.resets_at // empty" 2>/dev/null)
     lc=$(color_pct "$u")
-    s="${label}: ${lc}${u}%${R}"
+    s="${lc}${u}%${R}"
     if [[ -n "$resets_at" ]]; then
       t=$(fmt_time "$resets_at")
-      [[ -n "$t" ]] && s+=" (${t})"
+      [[ -n "$t" ]] && s+=" ${DIM}(${t})${R}"
     fi
     parts+=("$s")
   done
