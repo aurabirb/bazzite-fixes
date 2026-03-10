@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Claude Code statusline - bash + jq (replaces statusline.mjs)
+# Claude Code statusline - bash + jq
 
 R=$'\e[0m'
 DIM=$'\e[2m'
@@ -72,7 +72,7 @@ token=""
 # Fetch/cache rate limits (TTL 5 min = 300s)
 limits_json=""
 if [[ -n "$token" ]]; then
-  CACHE_DIR="$HOME/.cache/claude-dashboard"
+  CACHE_DIR="$HOME/.cache/claude-statusline"
   hash=$(printf '%s' "$token" | sha256sum | cut -c1-16)
   cache_file="$CACHE_DIR/cache-${hash}.json"
 
