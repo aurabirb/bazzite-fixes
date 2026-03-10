@@ -52,8 +52,9 @@ build_bar() {
 
 fmt_time() {
   local reset_epoch now diff m d h mins
-  reset_epoch=$(python3 -c "from datetime import datetime,timezone; s='$1'.replace('Z','+00:00'); dt=datetime.fromisoformat(s); print(int(dt.timestamp()))" 2>/dev/null) || return
-  [[ -z "$reset_epoch" ]] && return
+  local ts
+  ts=$(printf '%s' "$1" | sed 's/\.[0-9]*//; s/+00:00$/Z/')
+  reset_epoch=$(date -d "$ts" +%s 2>/dev/null || date -j -f '%Y-%m-%dT%H:%M:%SZ' "$ts" +%s 2>/dev/null) || return
   now=$(date +%s)
   diff=$(( reset_epoch - now ))
   (( diff <= 0 )) && { printf '0m'; return; }
