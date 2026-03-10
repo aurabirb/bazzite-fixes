@@ -52,7 +52,8 @@ build_bar() {
 
 fmt_time() {
   local reset_epoch now diff m d h mins
-  reset_epoch=$(date -d "$1" +%s 2>/dev/null || date -j -f '%Y-%m-%dT%H:%M:%SZ' "$1" +%s 2>/dev/null) || return
+  reset_epoch=$(python3 -c "from datetime import datetime,timezone; s='$1'.replace('Z','+00:00'); dt=datetime.fromisoformat(s); print(int(dt.timestamp()))" 2>/dev/null) || return
+  [[ -z "$reset_epoch" ]] && return
   now=$(date +%s)
   diff=$(( reset_epoch - now ))
   (( diff <= 0 )) && { printf '0m'; return; }
@@ -64,10 +65,15 @@ fmt_time() {
   fi
 }
 
-# Read OAuth token
+# Read OAuth token (file on Linux, Keychain on macOS)
 CREDS="$HOME/.claude/.credentials.json"
 token=""
-[[ -f "$CREDS" ]] && token=$(jq -r '.claudeAiOauth.accessToken // empty' "$CREDS" 2>/dev/null)
+if [[ -f "$CREDS" ]]; then
+  token=$(jq -r '.claudeAiOauth.accessToken // empty' "$CREDS" 2>/dev/null)
+elif [[ "$(uname)" == "Darwin" ]]; then
+  creds_json=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null) || true
+  [[ -n "$creds_json" ]] && token=$(printf '%s' "$creds_json" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+fi
 
 # Fetch/cache rate limits (TTL 5 min = 300s)
 limits_json=""
