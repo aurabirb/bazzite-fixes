@@ -50,15 +50,6 @@ build_bar() {
   printf '%s%s%s%s' "$c" "$bar" "$e" "$R"
 }
 
-fmt_tokens() {
-  awk "BEGIN{
-    n=$1
-    if(n>=1000000){ v=n/1000000; if(v>=10) printf \"%.0fM\",v; else printf \"%.1fM\",v }
-    else if(n>=1000){ v=n/1000; if(v>=10) printf \"%.0fK\",v; else printf \"%.1fK\",v }
-    else printf \"%d\",n
-  }"
-}
-
 fmt_time() {
   local reset_epoch now diff m d h mins
   reset_epoch=$(date -d "$1" +%s 2>/dev/null) || return
@@ -67,7 +58,7 @@ fmt_time() {
   (( diff <= 0 )) && { printf '0m'; return; }
   m=$(( diff / 60 ))
   d=$(( m / 1440 )); h=$(( (m % 1440) / 60 )); mins=$(( m % 60 ))
-  if   (( d > 0 )); then printf '%dd%dh' "$d" "$h"
+  if   (( d > 0 )); then printf '%dd' "$d"
   elif (( h > 0 )); then printf '%dh%dm' "$h" "$mins"
   else                   printf '%dm' "$mins"
   fi
