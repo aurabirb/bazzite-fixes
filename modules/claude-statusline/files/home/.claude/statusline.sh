@@ -26,8 +26,8 @@ read -r size input_tokens cost cwd_raw < <(printf '%s' "$input" | jq -r '
 project=${cwd_raw:+$(basename "$cwd_raw")}
 project=${project:-$(basename "$PWD")}
 
-# Percentage (clamped 0-100)
-pct=$(awk "BEGIN{p=$input_tokens/$size*100; if(p>100)p=100; printf \"%.0f\",p}")
+# Percentage
+pct=$(awk "BEGIN{p=$input_tokens/$size*100; printf \"%.0f\",p}")
 
 color_pct() {
   local p=$1
