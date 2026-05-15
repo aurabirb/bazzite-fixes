@@ -112,7 +112,19 @@ fi
 bar=$(build_bar "$pct")
 cost_fmt=$(printf '%.2f' "$cost")
 
-parts=("${CYAN}${project}${R} $bar" "${ACCENT}\$${cost_fmt}${R}")
+parts=("${CYAN}${project}${R} $bar")
+
+# Show cost only when using API key (no OAuth token) or when over subscription limits (extra usage)
+show_cost=0
+[[ -z "$token" ]] && show_cost=1
+if [[ show_cost -eq 0 && -n "$limits_json" && "$limits_json" != "null" ]]; then
+  for key in "five_hour" "seven_day"; do
+    util=$(printf '%s' "$limits_json" | jq -r ".${key}.utilization // empty" 2>/dev/null)
+    [[ -z "$util" ]] && continue
+    u=$(printf '%.0f' "$util")
+    (( u > 100 )) && show_cost=1 && break
+  done
+fi
 
 # Rate limit segments
 if [[ -n "$limits_json" && "$limits_json" != "null" ]]; then
@@ -130,6 +142,8 @@ if [[ -n "$limits_json" && "$limits_json" != "null" ]]; then
     parts+=("$s")
   done
 fi
+
+[[ $show_cost -eq 1 ]] && parts+=("${ACCENT}\$${cost_fmt}${R}")
 
 # Join with separator
 out=""
