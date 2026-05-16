@@ -97,7 +97,7 @@ if [[ -n "$token" ]]; then
       -H "anthropic-beta: oauth-2025-04-20" \
       "https://api.anthropic.com/api/oauth/usage" 2>/dev/null)
     if [[ -n "$response" ]]; then
-      limits_json=$(printf '%s' "$response" | jq '{five_hour: .five_hour, seven_day: .seven_day}')
+      limits_json=$(printf '%s' "$response" | jq '{five_hour: .five_hour, seven_day: .seven_day, extra_usage: .extra_usage}')
       mkdir -p "$CACHE_DIR"
       now_s=$(date +%s)
       printf '{"data":%s,"timestamp":%d}\n' "$limits_json" "$now_s" > "$cache_file"
@@ -110,21 +110,8 @@ fi
 
 # Assemble parts
 bar=$(build_bar "$pct")
-cost_fmt=$(printf '%.2f' "$cost")
 
 parts=("${CYAN}${project}${R} $bar")
-
-# Show cost only when using API key (no OAuth token) or when over subscription limits (extra usage)
-show_cost=0
-[[ -z "$token" ]] && show_cost=1
-if [[ show_cost -eq 0 && -n "$limits_json" && "$limits_json" != "null" ]]; then
-  for key in "five_hour" "seven_day"; do
-    util=$(printf '%s' "$limits_json" | jq -r ".${key}.utilization // empty" 2>/dev/null)
-    [[ -z "$util" ]] && continue
-    u=$(printf '%.0f' "$util")
-    (( u > 100 )) && show_cost=1 && break
-  done
-fi
 
 # Rate limit segments
 if [[ -n "$limits_json" && "$limits_json" != "null" ]]; then
@@ -143,7 +130,22 @@ if [[ -n "$limits_json" && "$limits_json" != "null" ]]; then
   done
 fi
 
-[[ $show_cost -eq 1 ]] && parts+=("${ACCENT}\$${cost_fmt}${R}")
+# Show extra usage cost when billed (OAuth over limit), or session cost when using API key
+if [[ -z "$token" ]]; then
+  cost_fmt=$(printf '%.2f' "$cost")
+  parts+=("${ACCENT}\$${cost_fmt}${R}")
+elif [[ -n "$limits_json" && "$limits_json" != "null" ]]; then
+  read -r eu_enabled eu_credits eu_currency < <(printf '%s' "$limits_json" | jq -r '
+    .extra_usage |
+    if . != null then "\(.is_enabled) \(.used_credits) \(.currency)" else "false 0 USD" end
+  ')
+  if [[ "$eu_enabled" == "true" ]] && awk "BEGIN{exit !($eu_credits > 0)}"; then
+    eu_amount=$(awk "BEGIN{printf \"%.2f\", $eu_credits / 100}")
+    currency_sym="$"
+    [[ "$eu_currency" == "EUR" ]] && currency_sym="€"
+    parts+=("${DANGER}${currency_sym}${eu_amount}${R}")
+  fi
+fi
 
 # Join with separator
 out=""
