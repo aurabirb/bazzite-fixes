@@ -1,0 +1,25 @@
+Name: @NAME@
+Version: @VERSION@
+Release: 1.k@RELEASE@
+Summary: gpu_unlock prebuilt for @KVER@ (github.com/Zagitta/gpu-unlock @COMMIT@)
+License: GPL-2.0-only AND LicenseRef-NVIDIA
+BuildArch: x86_64
+%global debug_package %{nil}
+%global __os_install_post %{nil}
+%global source_date_epoch_from_changelog 0
+
+%description
+gpu_unlock kernel module, generated NVIDIA firmware and dracut drop-in,
+packaged for layering with rpm-ostree.
+
+%install
+cp -a /stage/. %{buildroot}/
+
+%files
+/usr/lib/modules/@KVER@/extra/gpu_unlock.ko
+/usr/lib/firmware/gpu-unlock
+/usr/lib/dracut/dracut.conf.d/gpu-unlock.conf
+/usr/share/licenses/@NAME@
+
+%post
+/usr/sbin/depmod -a @KVER@ || :
