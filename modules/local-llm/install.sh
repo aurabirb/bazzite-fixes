@@ -20,9 +20,9 @@ MODEL_URL="https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/$MOD
 IMAGE="ghcr.io/ggml-org/llama.cpp:server-cuda"
 NAME="llm"
 # MoE layers whose experts stay in system RAM. 16 leaves ~1.5 GB VRAM free
-# (~61 tok/s on the RTX 4080); 14 is ~65 tok/s but leaves only ~0.6 GB.
+# at 32K context (~61 tok/s on the RTX 4080); 64K context takes ~0.4 GB more.
 CPU_MOE="${LLM_CPU_MOE:-16}"
-CTX="${LLM_CTX:-32768}"
+CTX="${LLM_CTX:-65536}"
 
 case "${1:-}" in
     download)
@@ -35,7 +35,7 @@ case "${1:-}" in
         podman run -d --name "$NAME" --device nvidia.com/gpu=all \
             --security-opt=label=disable -p 127.0.0.1:8080:8080 \
             -v "$MODELS_DIR":/models:ro "$IMAGE" \
-            -m "/models/$MODEL" -ngl 99 --n-cpu-moe "$CPU_MOE" -c "$CTX" \
+            -m "/models/$MODEL" --alias qwen3.6 -ngl 99 --n-cpu-moe "$CPU_MOE" -c "$CTX" \
             -fa on -ctk q8_0 -ctv q8_0 --jinja --host 0.0.0.0 --port 8080 >/dev/null
         echo -n "Loading model"
         until curl -sf localhost:8080/health >/dev/null; do
