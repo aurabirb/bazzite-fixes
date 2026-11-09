@@ -106,7 +106,9 @@ build_rpm() {
     local stage="$WORK/stage"
     install -Dm644 -t "$stage/usr/lib/modules/$KVER/extra" "$src/kernel/gpu_unlock/gpu_unlock.ko"
     install -Dm644 -t "$stage/usr/lib/firmware/gpu-unlock/$nv" "$assets"/*.bin
-    install -Dm644 "$src/packaging/boot/dracut.conf" "$stage/usr/lib/dracut/dracut.conf.d/gpu-unlock.conf"
+    # dracut loads force_drivers in drop-in filename order, and Bazzite's
+    # 99-nvidia.conf forces nvidia too: sort first so gpu_unlock gets the card
+    install -Dm644 "$src/packaging/boot/dracut.conf" "$stage/usr/lib/dracut/dracut.conf.d/10-gpu-unlock.conf"
     install -Dm644 -t "$stage/usr/share/licenses/$PKG" \
         "$src"/licenses/*.txt "$assets/NVIDIA-LICENSE" "$src/firmware/NOTICE.md"
 
@@ -138,7 +140,8 @@ trap 'restore_selinux; rm -rf "$WORK"' EXIT
 
 ensure_btrfs_headroom
 
-if [[ -f $DEPLOY/usr/lib/modules/$KVER/extra/gpu_unlock.ko && ${GPU_UNLOCK_FORCE:-0} != 1 ]]; then
+if [[ -f $DEPLOY/usr/lib/modules/$KVER/extra/gpu_unlock.ko && -f $DEPLOY/usr/lib/dracut/dracut.conf.d/10-gpu-unlock.conf \
+      && ${GPU_UNLOCK_FORCE:-0} != 1 ]]; then
     echo "  gpu_unlock is already layered for $KVER (GPU_UNLOCK_FORCE=1 to rebuild)"
 else
     build_rpm

@@ -18,7 +18,7 @@ cp -a /stage/. %{buildroot}/
 %files
 /usr/lib/modules/@KVER@/extra/gpu_unlock.ko
 /usr/lib/firmware/gpu-unlock
-/usr/lib/dracut/dracut.conf.d/gpu-unlock.conf
+/usr/lib/dracut/dracut.conf.d/10-gpu-unlock.conf
 /usr/share/licenses/@NAME@
 
 %post
