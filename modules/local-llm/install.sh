@@ -19,9 +19,12 @@ MODEL="${LLM_MODEL:-Qwen3.6-35B-A3B-UD-Q4_K_M.gguf}"
 MODEL_URL="https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/$MODEL"
 IMAGE="ghcr.io/ggml-org/llama.cpp:server-cuda"
 NAME="llm"
-# MoE layers whose experts stay in system RAM. 16 leaves ~1.5 GB VRAM free
-# at 32K context (~61 tok/s on the RTX 4080); 64K context takes ~0.4 GB more.
-CPU_MOE="${LLM_CPU_MOE:-16}"
+# MoE layers whose experts stay in system RAM. With 64K context and 4096-token
+# batches, 20 leaves ~1.8 GB VRAM free: ~1270 tok/s prompt, ~50-60 tok/s output.
+# Big batches matter for agents (Hermes sends a ~12K-token system prompt):
+# the default 512 batch only manages ~300 tok/s prompt processing.
+CPU_MOE="${LLM_CPU_MOE:-20}"
+BATCH="${LLM_BATCH:-4096}"
 CTX="${LLM_CTX:-65536}"
 
 case "${1:-}" in
@@ -36,7 +39,7 @@ case "${1:-}" in
             --security-opt=label=disable -p 127.0.0.1:8080:8080 \
             -v "$MODELS_DIR":/models:ro "$IMAGE" \
             -m "/models/$MODEL" --alias qwen3.6 -ngl 99 --n-cpu-moe "$CPU_MOE" -c "$CTX" \
-            -fa on -ctk q8_0 -ctv q8_0 --jinja --host 0.0.0.0 --port 8080 >/dev/null
+            -b "$BATCH" -ub "$BATCH" -fa on -ctk q8_0 -ctv q8_0 --jinja --host 0.0.0.0 --port 8080 >/dev/null
         echo -n "Loading model"
         until curl -sf localhost:8080/health >/dev/null; do
             podman ps -q -f name="^$NAME$" | grep -q . || { echo; podman logs "$NAME" 2>&1 | tail -5; exit 1; }
