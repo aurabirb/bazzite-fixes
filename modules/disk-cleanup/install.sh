@@ -1,7 +1,8 @@
 #!/bin/bash
 # Installs the diskclean command to ~/.local/bin. It wraps `ujust clean-system`
 # (podman, unused flatpaks, rpm-ostree, brew) and adds user-level flatpaks,
-# flatpak GL runtimes for old NVIDIA drivers, and a btrfs rebalance when the
+# flatpak GL runtimes for old NVIDIA drivers, ProtonPlus's downloaded archive
+# cache, the Bazaar and tracker3 caches, and a btrfs rebalance when the
 # filesystem has run out of unallocated space. Opt-in: Steam's library cache,
 # the Hugging Face and Homebrew caches, and the VS Code remote server.
 # Usage: diskclean [--steam-cache] [--hf-cache] [--brew-cache] [--vscode-server] [--balance] [--all]
@@ -52,6 +53,13 @@ if [[ -n $driver ]]; then
     done
 fi
 
+echo "== protonplus archive cache =="
+rm -rf "$HOME/.var/app/com.vysp3r.ProtonPlus/cache/ProtonPlus/archives"
+echo "== bazaar cache =="
+rm -rf "$HOME/.cache/io.github.kolunmi.Bazaar"
+echo "== tracker3 cache =="
+rm -rf "$HOME/.cache/tracker3"
+
 if [[ $steam -eq 1 ]]; then
     if pgrep -x steam >/dev/null; then
         echo "Steam is running, skipping its library cache (close Steam first)." >&2
@@ -94,7 +102,7 @@ if [[ $(findmnt -no FSTYPE /var/home) == btrfs ]]; then
 fi
 
 after=$(df --output=avail -B1 /var | tail -1)
-echo "Freed: $(numfmt --to=iec $((after - before)))  (free on /var: $(numfmt --to=iec "$after"))"
+echo "Freed: $(numfmt --to=iec -- $((after - before)))  (free on /var: $(numfmt --to=iec "$after"))"
 SCRIPT
 chmod +x "$DEST"
 echo "  diskclean installed to $DEST."
