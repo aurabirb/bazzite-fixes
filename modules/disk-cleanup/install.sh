@@ -1,10 +1,11 @@
 #!/bin/bash
-# Installs the diskclean command to ~/.local/bin. It wraps `ujust clean-system`
-# (podman, unused flatpaks, rpm-ostree, brew) and adds user-level flatpaks,
-# flatpak GL runtimes for old NVIDIA drivers, ProtonPlus's downloaded archive
-# cache, the Bazaar and tracker3 caches, and a btrfs rebalance when the
-# filesystem has run out of unallocated space. Opt-in: Steam's library cache,
-# the Hugging Face and Homebrew caches, and the VS Code remote server.
+# Installs the diskclean command to ~/.local/bin and runs it once immediately.
+# It wraps `ujust clean-system` (podman, unused flatpaks, rpm-ostree, brew) and
+# adds user-level flatpaks, flatpak GL runtimes for old NVIDIA drivers,
+# ProtonPlus's downloaded archive cache, the Bazaar and tracker3 caches, and a
+# btrfs rebalance when the filesystem has run out of unallocated space.
+# Opt-in (not run by this install, use the command directly): Steam's library
+# cache, the Hugging Face and Homebrew caches, and the VS Code remote server.
 # Usage: diskclean [--steam-cache] [--hf-cache] [--brew-cache] [--vscode-server] [--balance] [--all]
 
 set -euo pipefail
@@ -106,4 +107,5 @@ echo "Freed: $(numfmt --to=iec -- $((after - before)))  (free on /var: $(numfmt 
 SCRIPT
 chmod +x "$DEST"
 echo "  diskclean installed to $DEST."
-echo "  Run 'diskclean' (or 'diskclean --all' to include the opt-in caches and a full rebalance)."
+echo "  Run 'diskclean --all' later to include the opt-in caches and a full rebalance."
+"$DEST"
