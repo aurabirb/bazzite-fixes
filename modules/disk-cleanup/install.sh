@@ -46,11 +46,18 @@ sudo journalctl --vacuum-size=200M
 driver=$(cat /sys/module/nvidia/version 2>/dev/null)
 if [[ -n $driver ]]; then
     echo "== old NVIDIA flatpak runtimes (keeping $driver) =="
+    # polkit refuses system-scope uninstalls of runtimes still referenced by
+    # apps ("Uninstall not allowed for user"), so that scope goes through sudo.
     for scope in --user --system; do
         refs=$(flatpak list $scope --runtime --columns=ref \
             | grep -E '^org\.freedesktop\.Platform\.GL(32)?\.nvidia-' \
             | grep -v -- "nvidia-${driver//./-}/")
-        [[ -n $refs ]] && flatpak uninstall $scope -y $refs
+        [[ -z $refs ]] && continue
+        if [[ $scope == --system ]]; then
+            sudo flatpak uninstall --system -y $refs
+        else
+            flatpak uninstall --user -y $refs
+        fi
     done
 fi
 
